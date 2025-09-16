@@ -1,4 +1,9 @@
 {
+  "scripts":{
+    "start": "node apps.js"
+  } 
+}
+{
   "name": "inventioncomp",
   "version": "1.0.0",
   "main": "pendaftaran.js",
