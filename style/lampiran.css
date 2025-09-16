@@ -1,0 +1,161 @@
+/* lampiran.css (updated)
+   Better table fit + medium images, responsive improvements
+   Save to: /style/lampiran.css
+*/
+:root{
+  --bg:#f8fafc;
+  --card:#ffffff;
+  --muted:#6b7280;
+  --primary:#0f62ff;
+  --accent:#0f2f66;
+  --danger:#ef4444;
+  --success:#16a34a;
+  --border:#e6e9ee;
+  --radius:10px;
+  --shadow: 0 6px 18px rgba(15,47,102,0.08);
+  --mono: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  font-family:var(--mono);
+  background:var(--bg);
+  color:#0b1220;
+  line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* Page wrapper */
+.page{
+  max-width:1100px;
+  margin:22px auto;
+  background:var(--card);
+  padding:20px;
+  border-radius:12px;
+  box-shadow:var(--shadow);
+  border:1px solid var(--border);
+}
+.heading{font-size:20px;margin:0 0 12px 0;color:var(--accent)}
+.subheading{font-size:16px;margin:14px 0 8px 0;color:var(--primary)}
+
+/* Alerts */
+.success-box, .error-box, .no-data-box{
+  display:block;
+  padding:12px 14px;
+  border-radius:8px;
+  margin:10px 0;
+}
+.success-box{background:#ecfdf5;color:var(--success);border:1px solid rgba(22,163,74,0.12)}
+.error-box{background:#fff1f2;color:var(--danger);border:1px solid rgba(239,68,68,0.08)}
+.no-data-box{background:linear-gradient(90deg,#fff,#fbfbfc);border:1px dashed var(--border);text-align:center}
+
+/* Links and buttons */
+.link, a.link{color:var(--primary);text-decoration:underline}
+.btn-link, .link-button{
+  display:inline-block;padding:6px 10px;border-radius:8px;border:1px solid transparent;text-decoration:none;font-size:14px;background:transparent;color:var(--primary)
+}
+.btn-link:hover{background:rgba(15,98,255,0.06)}
+
+.btn-edit{display:inline-block;padding:6px 10px;border-radius:8px;background:#fff;border:1px solid var(--border);text-decoration:none;color:#0b1220;margin-right:6px}
+.btn-edit:hover{box-shadow:0 4px 10px rgba(11,18,32,0.06)}
+
+.btn-delete{display:inline-block;padding:6px 10px;border-radius:8px;background:#fff;border:1px solid var(--border);color:var(--danger);text-decoration:none}
+.btn-delete:hover{background:rgba(239,68,68,0.06)}
+
+/* TABLE: improved responsiveness and readable content */
+.table-responsive{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:8px}
+.data-table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:15px; /* a bit larger so content not too small */
+  background:transparent;
+  min-width:720px; /* allow horizontal scroll on small screens but not too large */
+  table-layout:auto; /* let columns size by content (prevents tiny text) */
+}
+.data-table th, .data-table td{
+  padding:12px 10px;border-bottom:1px solid var(--border);vertical-align:middle;text-align:left;
+  white-space:normal; /* allow wrapping instead of squeezing */
+}
+.table-head-cell{background:#fbfdff;color:#0b1220;border-bottom:2px solid var(--border);position:sticky;top:0;z-index:2}
+.table-cell{word-wrap:break-word;overflow-wrap:break-word}
+.table-row:hover .table-cell{background:rgba(15,47,102,0.02)}
+
+/* Min-width suggestions for important columns so they remain readable.
+   Using moderate min-width keeps layout stable; horizontal scroll will appear when needed.
+*/
+.data-table td, .data-table th { min-width: 90px; }
+.data-table th:nth-child(1), .data-table td:nth-child(1) { min-width:140px; } /* Nama */
+.data-table th:nth-child(2), .data-table td:nth-child(2) { min-width:160px; } /* Email */
+.data-table th:nth-child(8), .data-table td:nth-child(8) { min-width:140px; } /* Nama Produk */
+.data-table th:nth-child(11), .data-table td:nth-child(11) { min-width:140px; } /* Uraian (boleh melebar) */
+
+/* Reduce excessive width for action column */
+.data-table td:last-child, .data-table th:last-child{white-space:nowrap;width:140px}
+
+/* Small username styling used in admin */
+.username-cell{font-weight:600;color:var(--accent)}
+
+/* Attach previews in admin */
+.thumb-small{width:56px;height:44px;object-fit:cover;border-radius:6px;border:1px solid var(--border)}
+.attach-cell{display:flex;align-items:center;gap:6px;flex-wrap:wrap;max-width:300px}
+.attach-count{font-size:12px;color:var(--muted);margin-left:6px}
+
+/* Forms */
+.form-label{font-size:13px;color:#0b1220;font-weight:600}
+.form-input, .form-select{width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:#fff;margin-top:6px}
+.form-input[type="file"]{padding:6px}
+.form-checkbox{margin-right:8px}
+.section{margin-bottom:16px;padding:12px;border-radius:8px;border:1px solid #f1f5f9;background:#fcfeff}
+.edit-form button[type="submit"]{padding:10px 14px;border-radius:10px;border:none;background:var(--primary);color:#fff;cursor:pointer}
+.edit-form button[type="submit"]:hover{opacity:0.95}
+.current-file{display:inline-flex;align-items:center;gap:8px;margin-top:8px}
+.thumb{border-radius:6px;border:1px solid var(--border);max-height:90px;object-fit:cover}
+
+/* LAMPIRAN / gallery
+   - medium images and prevent heavy crop (use object-fit:contain)
+*/
+.lampiran-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:8px;align-items:start}
+.lampiran-item{background:#fff;border:1px solid var(--border);padding:10px;border-radius:10px;display:flex;flex-direction:column;align-items:flex-start}
+.file-label{font-size:13px;color:var(--muted);margin-bottom:8px}
+/* medium image size, maintain aspect, use contain */
+.lampiran-img{width:100%;height:140px;object-fit:contain;border-radius:8px;border:1px solid #eee;background:#fbfcff;padding:6px}
+.media-preview{width:100%;max-height:220px;border-radius:8px}
+.file-link{display:inline-block;padding:6px 8px;border-radius:8px;background:transparent;border:1px dashed #e5e7eb;text-decoration:none;font-size:13px;color:var(--accent)}
+.file-link:hover{background:rgba(15,47,102,0.02)}
+
+/* make thumbnails inside lampiran-item consistent and not too large */
+.lampiran-item img{cursor:zoom-in;max-height:140px}
+
+/* Utilities */
+.small{font-size:12px;color:var(--muted)}
+.center{text-align:center}
+
+/* Accessibility focus outlines */
+a:focus, button:focus, input:focus, select:focus{outline:3px solid rgba(15,62,255,0.12);outline-offset:2px}
+
+/* Responsive improvements for smaller devices */
+@media (max-width:900px){
+  .page{margin:12px;padding:14px}
+  .heading{font-size:18px}
+  .subheading{font-size:15px}
+  .lampiran-img{height:110px}
+  .thumb-small{width:48px;height:36px}
+  .data-table { font-size:14px; }
+}
+
+/* For very small screens, allow wrapping (no forced min-width) so content remains readable.
+   Table will still be horizontally scrollable but cells can wrap instead of shrinking text.
+*/
+@media (max-width:600px){
+  .data-table{min-width:0;font-size:14px}
+  .data-table td, .data-table th{padding:8px; min-width:0}
+  .data-table td:last-child, .data-table th:last-child{width:auto}
+  .lampiran-img{height:100px}
+}
+
+/* Print adjustments */
+@media print{
+  body{background:#fff}
+  .page{box-shadow:none;border:none}
+}

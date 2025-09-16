@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Dashboard - InnoVasi</title>
+
+  <!-- header + footer styles -->
+  <link rel="stylesheet" href="/style/header-footer.css">
+  <!-- dashboard/content styles -->
+  <link rel="stylesheet" href="/style/dashboard.css">
+</head>
+<body>
+  <header class="site-header" role="banner">
+    <div class="header-inner">
+      <a href="/dashboard" class="brand" aria-label="InnoVasi home">
+        <div class="logo">I</div>
+        <div class="text">InnoVasi</div>
+      </a>
+
+      <button id="navToggle" class="hamburger" aria-label="Toggle menu" aria-expanded="false">
+        <span class="hamburger-box"><span class="hamburger-inner"></span></span>
+      </button>
+
+      <nav id="primaryNav" class="primary" aria-label="Main navigation">
+        <ul class="nav-list" role="menubar">
+          <li role="none"><a class="nav-link" href="/dashboard" role="menuitem">Dashboard</a></li>
+          <li role="none"><a class="nav-link" href="/pendaftaran.html" role="menuitem">Daftar Inovasi</a></li>
+          <li role="none"><a class="nav-link" href="/dashboard/data" role="menuitem">Data Inovasi Saya</a></li>
+          <!-- admin items will be injected by JS when role === 'admin' -->
+        </ul>
+      </nav>
+
+      <div class="spacer" aria-hidden="true"></div>
+
+      <div class="user-area" id="userArea">
+        <!-- single Register / Login button for guests; JS will replace when logged in -->
+        <div id="guestLinks" class="guest-links">
+          <a class="btn-link" href="/register.html" role="button">Register / Login</a>
+        </div>
+
+        <div id="loggedIn" class="logged-in" hidden>
+          <div class="user" id="userProfile" tabindex="0">
+            <svg class="user-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 12a4 4 0 100-8 4 4 0 000 8z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M4 20a8 8 0 0116 0" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span id="userName">User</span>
+          </div>
+          <a id="logoutBtn" class="btn-logout" href="/logout" title="Logout">
+            Logout
+          </a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <div class="hero-inner">
+        <!-- Slider -->
+        <div class="hero-slider" id="heroSlider" data-autoplay="true" data-interval="4500">
+          <div class="slides">
+            <!-- Ganti src sesuai file gambar Anda -->
+            <div class="slide"><img src="/pictures/1750236738-D6Yhpw9bLqebtT47MtZ4fkCx4ZlLRGssl1aAxvJAK4bxNR6FrZ.jpg" alt="Inovasi 1"></div>
+            <div class="slide"><img src="/pictures/1750618408-ZDN3xdSE8r4VnPyk8lPHG85RWmlsbvasSx3LvRFsnUQBOvxKHa.jpg" alt="Inovasi 2"></div>
+          </div>
+
+          <!-- controls -->
+          <button class="slider-btn prev" aria-label="Previous slide">&larr;</button>
+          <button class="slider-btn next" aria-label="Next slide">&rarr;</button>
+
+          <!-- pagination -->
+          <div class="slider-dots" aria-hidden="false"></div>
+        </div>
+
+        <!-- Hero text block (ke kanan / di atas tergantung lebar) -->
+        <div class="hero-content">
+          <h1 class="hero-title">Selamat Datang di Platform Inovasi</h1>
+          <p class="hero-sub">
+            Daftarkan ide inovasi Anda dan bergabunglah dengan komunitas innovator Pekanbaru.
+            Mari bersama membangun masa depan yang lebih baik melalui teknologi dan kreativitas.
+          </p>
+          <div class="hero-ctas">
+            <a class="cta-btn" href="/pendaftaran.html">Daftarkan Inovasi Anda</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <section class="welcome">
+      <h2 id="welcomeTitle">Halo, <span id="welcomeName">User</span></h2>
+      <p class="lead">Kelola pendaftaran inovasi Anda dari dashboard ini. Gunakan navigasi di atas untuk berpindah halaman.</p>
+
+      <div class="quick-actions" id="quickActions">
+        <a class="action-btn" href="/pendaftaran.html">Daftar Inovasi</a>
+        <a class="action-btn secondary" href="/dashboard/data">Lihat Data Saya</a>
+      </div>
+    </section>
+
+    <!-- Admin announcement area (initially empty) -->
+    <section class="admin-announcement" id="adminAnnouncement" aria-live="polite"></section>
+
+    <section id="extra" class="extras"></section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <p>&copy; <span id="year"></span> InnoVasi</p>
+    </div>
+  </footer>
+
+  <script src="/scripts/header-footer.js" defer></script>
+  <script src="/scripts/dashboard.js" defer></script>
+
+</body>
+</html>

@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Pendaftaran Inovasi</title>
+  <!-- kamu bisa buat stylePendaftaran.css dan isi styling sesuai class di bawah -->
+  <link rel="stylesheet" href="style/stylePendaftaran.css">
+  <link rel="stylesheet" href="/style/header-footer.css">
+</head>
+<body>
+  <header class="site-header" role="banner">
+    <div class="header-inner">
+      <a href="/dashboard" class="brand" aria-label="InnoVasi home">
+        <div class="logo">I</div>
+        <div class="text">InnoVasi</div>
+      </a>
+
+      <button id="navToggle" class="hamburger" aria-label="Toggle menu" aria-expanded="false">
+        <span class="hamburger-box"><span class="hamburger-inner"></span></span>
+      </button>
+
+      <nav id="primaryNav" class="primary" aria-label="Main navigation">
+        <ul class="nav-list" role="menubar">
+          <li role="none"><a class="nav-link" href="/dashboard" role="menuitem">Dashboard</a></li>
+          <li role="none"><a class="nav-link" href="/pendaftaran.html" role="menuitem">Daftar Inovasi</a></li>
+          <li role="none"><a class="nav-link" href="/dashboard/data" role="menuitem">Data Inovasi Saya</a></li>
+          <!-- admin items will be injected by JS when role === 'admin' -->
+        </ul>
+      </nav>
+
+      <div class="spacer" aria-hidden="true"></div>
+
+      <div class="user-area" id="userArea">
+        <!-- single Register / Login button for guests; JS will replace when logged in -->
+        <div id="guestLinks" class="guest-links">
+          <a class="btn-link" href="/register.html" role="button">Register / Login</a>
+        </div>
+
+        <div id="loggedIn" class="logged-in" hidden>
+          <div class="user" id="userProfile" tabindex="0">
+            <svg class="user-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 12a4 4 0 100-8 4 4 0 000 8z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M4 20a8 8 0 0116 0" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span id="userName">User</span>
+          </div>
+          <a id="logoutBtn" class="btn-logout" href="/logout" title="Logout">
+            Logout
+          </a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="page-container">
+    <h1 class="page-title">Formulir Pendaftaran Lomba Inovasi Masyarakat</h1>
+    <p>
+      Berikut ini merupakan Formulir Pendaftaran Lomba Inovasi Masyarakat.
+      Mohon kiranya sebelum melakukan pendaftaran agar mempersiapkan data sebagai berikut :
+      <ol>
+        <li>Pas Foto 4x6 (jpeg)</li>
+        <li>Identitas Diri (Berupa KTP/Kartu Pelajar/Kartu Mahasiswa/Surat Keterangan Domisili)</li>
+        <li>Foto Produk/Inovasi maksimal 10 Foto (pdf/jpeg)</li>
+        <li>Video Produk/Inovasi (berbentuk link Google Drive atau Youtube)</li>
+        <li>Legalitas atau Sertifikat Pendukung lainnya (HKI, SNI, BPOM, dll)</li>
+      </ol>
+    </p>
+
+    <form id="formPendaftaran" class="form" enctype="multipart/form-data">
+      <section class="form-section identitas">
+        <h3 class="section-title">Identitas Inovator</h3>
+
+        <div class="form-group">
+          <label class="form-label">Nama Inovator</label>
+          <input class="form-input" type="text" name="namaInovator" required>
+        </div>
+
+        <br><br>
+
+        <div class="form-group">
+          <label class="form-label">Alamat Email</label>
+          <input class="form-input" type="email" name="alamatEmail" required>
+        </div>
+
+        <br><br>
+
+        <div class="form-group">
+          <label class="form-label">Nomor HP/WA</label>
+          <input class="form-input" type="text" name="nomorHp" required>
+        </div>
+
+        <br><br>
+
+        <div class="form-group">
+          <label class="form-label">Pas Foto</label>
+          <p>
+            Ukuran 4x6 <br>
+           <small> Upload 1 file yang didukung: drawing atau image. Maks 10 MB.</small>
+          </p>
+          <input class="form-input-file" type="file" id="foto" name="foto" accept="image/*"><br>
+          <img id="previewFoto" class="preview-img" width="120" alt="">
+        </div>
+
+        <br><br>
+
+        <div class="form-group">
+          <label class="form-label">Individu atau Kelompok</label>
+          <select class="form-select" name="indiKelom">
+            <option value="Individu">Individu</option>
+            <option value="Kelompok">Kelompok</option>
+          </select>
+        </div>
+
+        <br><br>
+
+        <div class="form-group">
+          <label class="form-label">Anggota Kelompok</label>
+          <input class="form-input" type="text" name="anggotaKelompok">
+        </div>
+
+        <br><br>
+
+        <div class="form-group">
+          <label class="form-label">Identitas Diri</label>
+          <select class="form-select" name="identitasDiri" id="identitasDiri">
+            <option value="KTP">KTP</option>
+            <option value="Kartu Mahasiswa">Kartu Mahasiswa</option>
+            <option value="Surat Keterangan Domisili">Surat Keterangan Domisili</option>
+          </select>
+        </div>
+
+        <br><br>
+
+        <div class="form-group">
+          <label class="form-label">Upload Identitas Diri</label>
+          <!-- name tetap fotoIdentitas sesuai permintaan kamu -->
+           <p>
+            Berupa KTP/Kartu Pelajar/Kartu Mahasiswa/Surat Keterangan Domisili, Jika Berkelompok Cukup Mengupload Identitas Diri Ketua Kelompok <br>
+            <small>Upload 1 file yang didukung: PDF, document, drawing, atau image. Maks 100 MB.</small>
+           </p>
+          <input class="form-input-file" type="file" id="fotoIdentitas" name="fotoIdentitas" accept="image/*"><br>
+          <img id="previewIdentitas" class="preview-img" width="120" alt="">
+        </div>
+      </section>
+
+      <section class="form-section profil">
+        <h3 class="section-title">Profil Inovasi</h3>
+
+        <div class="form-group">
+          <label class="form-label">Bidang Inovasi</label>
+          <input class="form-checkbox" type="checkbox" name="bidang" value="Pertanian dan pangan"> Pertanian dan pangan<br>
+          <input class="form-checkbox" type="checkbox" name="bidang" value="Energi"> Energi<br>
+          <input class="form-checkbox" type="checkbox" name="bidang" value="Lingkungan Hidup"> Lingkungan Hidup<br>
+          <input class="form-checkbox" type="checkbox" name="bidang" value="Kesehatan, Obat-obatan, dan Kosmetika"> Kesehatan, Obat-obatan, dan Kosmetika<br>
+          <input class="form-checkbox" type="checkbox" name="bidang" value="Pendidikan"> Pendidikan<br>
+          <input class="form-checkbox" type="checkbox" name="bidang" value="Rekayasa dan Manufaktur"> Rekayasa dan Manufaktur<br>
+          <input class="form-checkbox" type="checkbox" name="bidang" value="Kerajinan dan Industri Rumah Tangga"> Kerajinan dan Industri Rumah Tangga<br>
+          <input class="form-checkbox" type="checkbox" name="bidang" value="Sosial, Budaya, dan Seni"> Sosial, Budaya, dan Seni<br>
+        </div>
+
+        <br><br>
+        <div class="form-group">
+          <label class="form-label">Judul/Nama Produk</label>
+          <input class="form-input" type="text" name="namaProduk">
+        </div>
+
+        <br><br>
+
+        <div class="form-group">
+          <label class="form-label">Latar Belakang</label>
+          <input class="form-input" type="text" name="latarProduk">
+        </div>
+
+        <br><br>
+        <div class="form-group">
+          <label class="form-label">Tujuan</label>
+          <input class="form-input" type="text" name="tujuanProduk">
+        </div>
+
+        <br><br>
+        <div class="form-group">
+          <label class="form-label">Uraikan Inovasi</label>
+          <small>Maksimal 300 kata yang terdiri dari kebaharuan, keunggulan sfesifikasi, proses atau cara kerja, masalah yang diselesaikan, dampak, komersialisasi dan informasi pendukung lainnya</small>
+          <input class="form-input" type="text" name="uraianInovasi">
+        </div>
+      </section>
+
+      <section class="form-section pendukung">
+        <h3 class="section-title">Data Pendukung</h3>
+
+        <div class="form-group">
+          <label class="form-label">Foto Produk</label>
+          <small>Upload maksimum 10 file yang didukung: PDF, drawing, atau image. Maks 100 MB per file.</small>
+          <input class="form-input-file" type="file" id="fotoProduk" name="fotoProduk" accept="image/*" multiple><br>
+          <img id="previewProduk" class="preview-img" width="120" alt="">
+        </div>
+
+        <br><br>
+        <div class="form-group">
+          <label class="form-label">Video Produk</label>
+          <small>Link Google Drive atau Youtube</small>
+          <input class="form-input" type="text" name="videoProduk">
+        </div>
+
+        <br><br>
+        <div class="form-group">
+          <label class="form-label">Legalitas</label>
+          <p>
+            Contoh : HKI, SNI, BPOM, dll <br>
+            <small>Upload maksimum 10 file yang didukung: PDF, document, atau image. Maks 100 MB per file.</small>
+          </p>
+          <input class="form-input-file" type="file" id="legalitas" name="legalitas"><br>
+          <span id="previewLegalitas" class="file-name"></span>
+        </div>
+
+        <br><br>
+        <div class="form-group">
+          <label class="form-label">Inovasi yang Dihasilkan</label>
+          <select class="form-select" name="inovasiYangDihasilkan">
+            <option value="Sudah Dikomersilkan/Dipasarkan">Sudah Dikomersilkan/Dipasarkan</option>
+            <option value="Digunakan Hanya dalam Kelompok/Komunitas">Digunakan Hanya dalam Kelompok/Komunitas</option>
+            <option value="Prototipe/Rancangan">Prototipe/Rancangan</option>
+          </select>
+        </div>
+
+        <br><br>
+        <div class="form-group">
+          <button class="btn-submit" type="submit">Kirim</button>
+        </div>
+      </section>
+    </form>
+
+    <div id="hasil" class="result-box"></div>
+  </main>
+  <script src="/scripts/header-footer.js" defer></script>
+  <script src="scripts/pendaftaran.js"></script>
+</body>
+</html>

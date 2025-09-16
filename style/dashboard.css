@@ -1,0 +1,193 @@
+/* dashboard.css
+   Styles khusus halaman dashboard (hero, quick actions, content grid)
+*/
+
+.container{max-width:1100px;margin:20px auto;padding:0 16px}
+.hero{background:linear-gradient(180deg,#ecfeff, #f8fbfb);border-radius:12px;padding:28px;margin:10px 0;box-shadow:var(--shadow)}
+.hero-inner{max-width:900px}
+.hero-title{margin:0 0 8px;font-size:28px;color:var(--text)}
+.hero-sub{margin:0 0 16px;color:var(--muted);line-height:1.5}
+.hero-ctas{display:flex;gap:10px}
+.cta-btn{display:inline-block;background:var(--accent);color:white;padding:10px 16px;border-radius:10px;text-decoration:none;font-weight:700}
+.cta-btn:hover{background:var(--accent-dark)}
+
+.welcome{margin-top:18px;padding:16px 0}
+.welcome .heading{font-size:20px;margin:0}
+.lead{color:var(--muted);margin:8px 0 12px}
+
+.quick-actions{display:flex;gap:10px;flex-wrap:wrap}
+.action-btn{display:inline-block;padding:10px 12px;border-radius:10px;text-decoration:none;background:#ffffff;border:1px solid var(--border);font-weight:600;color:var(--text)}
+.action-btn.secondary{background:#f8fafc}
+.action-btn:hover{transform:translateY(-2px);transition:transform .12s ease}
+
+/* admin announcement area - placeholder for admin content */
+.admin-announcement{margin:18px 0;padding:12px;border-radius:10px;background:#fff;border:1px dashed var(--border)}
+.admin-announcement .announcement{padding:12px;border-radius:8px;background:linear-gradient(180deg,#fff,#fbfeff);margin-bottom:8px}
+.admin-announcement .announcement h3{margin:0 0 6px}
+.admin-announcement .announcement p{margin:0;color:var(--muted)}
+
+/* responsive table wrapper used by /dashboard/data rendering */
+.table-responsive{overflow:auto;border-radius:10px;background:#fff;padding:8px;border:1px solid var(--border)}
+.data-table{width:100%;border-collapse:collapse}
+.data-table th, .data-table td{padding:8px 10px;text-align:left;border-bottom:1px solid #f1f5f9;font-size:14px}
+.table-head-cell{background:#fbfdfe;font-weight:700;color:var(--muted)}
+.table-row:nth-child(even){background:#fff}
+.table-cell .thumb-small{width:44px;height:44px;border-radius:6px;object-fit:cover;margin-right:6px}
+
+/* attachments small preview used in admin table */
+.attach-cell{display:flex;align-items:center;gap:8px;flex-wrap:nowrap}
+.attach-count{display:inline-block;padding:6px 8px;border-radius:12px;background:#f3f7f7;border:1px solid var(--border);font-size:12px;color:var(--muted)}
+
+/* edit form styles used in /edit */
+.edit-form .form-label{display:block;margin:8px 0 6px;font-weight:600}
+.form-input, .form-select{width:100%;padding:8px;border-radius:8px;border:1px solid var(--border);background:#fff}
+
+/* lampiran grid */
+.lampiran-grid{display:flex;flex-wrap:wrap;gap:12px;padding:8px 0}
+.lampiran-item{width:180px;border-radius:8px;padding:8px;background:#fff;border:1px solid var(--border);text-align:center}
+.lampiran-img{max-width:100%;height:120px;object-fit:cover;border-radius:6px}
+.media-preview{width:100%;height:150px;background:#000;border-radius:6px}
+
+/* small screens */
+@media (max-width:900px){
+  .hero-title{font-size:20px}
+  .welcome .lead{font-size:14px}
+  .lampiran-item{width:48%}
+  .nav-list{width:220px}
+  .table-responsive{min-width:600px}
+}
+
+/* HERO SLIDER - add to /style/dashboard.css */
+
+/* container */
+.hero {
+  padding: 22px 16px;
+  background: var(--surface, #fff);
+}
+.hero-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  gap: 24px;
+  align-items: center;
+}
+
+/* fallback stack on small screens */
+@media (max-width: 900px) {
+  .hero-inner {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* slider box */
+.hero-slider {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(18,24,32,0.06);
+  min-height: 260px;
+  background: #f6f7fb;
+}
+
+/* slides track */
+.hero-slider .slides {
+  display: flex;
+  transition: transform 420ms cubic-bezier(.22,.9,.2,1);
+  will-change: transform;
+}
+
+/* each slide */
+.hero-slider .slide {
+  min-width: 100%;
+  flex: 0 0 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.hero-slider .slide img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  user-select: none;
+}
+
+/* controls */
+.slider-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: rgba(0,0,0,0.45);
+  color: #fff;
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  transition: background .18s;
+}
+.slider-btn:hover { background: rgba(0,0,0,0.6); }
+.slider-btn.prev { left: 12px; }
+.slider-btn.next { right: 12px; }
+
+/* dots */
+.slider-dots {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 10px;
+  display: flex;
+  gap: 8px;
+  z-index: 11;
+}
+.slider-dots button {
+  width: 10px;
+  height: 10px;
+  border-radius: 12px;
+  border: none;
+  background: rgba(255,255,255,0.6);
+  cursor: pointer;
+  padding: 0;
+}
+.slider-dots button.active {
+  background: rgba(255,255,255,1);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+/* hero content (text area) */
+.hero-content {
+  padding: 20px;
+}
+.hero-title {
+  margin: 0 0 8px;
+  font-size: 28px;
+  line-height: 1.1;
+}
+.hero-sub {
+  margin: 0 0 16px;
+  color: #444;
+  max-width: 38rem;
+}
+.cta-btn {
+  display: inline-block;
+  padding: 10px 16px;
+  background: var(--accent, #2b6df6);
+  color: white;
+  text-decoration: none;
+  border-radius: 8px;
+}
+
+/* smaller screens tweaks */
+@media (max-width: 600px){
+  .hero-title { font-size: 20px; }
+  .hero-slider { min-height: 180px; border-radius:10px; }
+  .slider-btn { width:36px; height:36px; }
+  .hero-inner { gap: 16px; padding: 12px; }
+}
