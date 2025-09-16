@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "pendaftaran.js",
   "scripts":{
-    "start": "node apps.js",
+    "start": "node apps.js"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
