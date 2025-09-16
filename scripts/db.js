@@ -5,10 +5,10 @@ const mysql = require("mysql2");
 
 // konfigurasi koneksi ke MySQL
 const db = mysql.createConnection({
-  host: "127.0.0.1",   // ganti jika pakai server luar
-  user: "root",        // username MySQL
-  password: "1234",        // password MySQL
-  database: "invention_db" // nama database MySQL
+  host: "sql.freedb.tech",   // ganti jika pakai server luar
+  user: "freedb_andri",        // username MySQL
+  password: "kcW?HmbZ8AJg9c2",        // password MySQL
+  database: "freedb_invention_db" // nama database MySQL
 });
 
 // cek koneksi
@@ -21,3 +21,4 @@ db.connect(err => {
 });
 
 module.exports = db;
+
