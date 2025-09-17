@@ -194,6 +194,7 @@ body{
 .btn-link {
   display: inline-flex;
   align-items: center;
+  font-size: 12px;
   justify-content: center;
   height: 36px;          /* seragamkan tinggi tombol */
   padding: 6px 12px;     /* cukup ruang horizontals */
@@ -222,3 +223,4 @@ body{
     position: static;
   }
 }
+
