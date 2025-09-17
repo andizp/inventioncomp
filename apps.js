@@ -1,9 +1,16 @@
-// app.js
+// app.js (modified to upload files to Cloudinary)
+// NOTE: changes are limited to switching multer to memoryStorage, adding Cloudinary upload helpers,
+// and adjusting upload/display/download logic so uploaded files use Cloudinary URLs.
+// Other logic and routes are kept unchanged except where required to support Cloudinary.
+
 const express = require ("express");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 const archiver = require("archiver");
+const cloudinary = require('cloudinary').v2;
+const streamifier = require('streamifier');
+const https = require('https');
 
 // import koneksi db yang sudah dipisah
 const db = require('./scripts/db.js');
@@ -13,6 +20,13 @@ const session = require("express-session");
 
 const app = express();
 const port = process.env.PORT || 3000;
+
+// configure cloudinary from environment variables
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME || process.env.CLOUDINARY_NAME || '',
+  api_key: process.env.CLOUDINARY_API_KEY || process.env.CLOUDINARY_KEY || '',
+  api_secret: process.env.CLOUDINARY_API_SECRET || process.env.CLOUDINARY_SECRET || ''
+});
 
 // Middleware
 app.use(express.static(__dirname));
@@ -24,21 +38,51 @@ app.use(session({
   cookie: { secure: false }
 }));
 
-// Pastikan folder uploads ada
+// Pastikan folder uploads ada (keberadaan folder tetap dipertahankan untuk kompatibilitas lokal)
 if (!fs.existsSync("uploads")) {
   fs.mkdirSync("uploads");
 }
 
-// Konfigurasi multer (upload file)
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads/");
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname));
-  }
-});
-const upload = multer({ storage });
+// ----------------- MULTER: use memoryStorage so we can upload buffers to Cloudinary -----------------
+const memoryStorage = multer.memoryStorage();
+const upload = multer({ storage: memoryStorage });
+
+// ----------------- HELPERS for Cloudinary upload & URL handling -----------------
+function uploadBufferToCloudinary(buffer, options = {}){
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(options, (error, result) => {
+      if (error) return reject(error);
+      resolve(result);
+    });
+    streamifier.createReadStream(buffer).pipe(stream);
+  });
+}
+
+function buildFileUrl(value){
+  if(!value) return '';
+  // if the stored value already looks like a full URL, return it unchanged
+  if(typeof value === 'string' && (value.startsWith('http://') || value.startsWith('https://'))) return value;
+  // otherwise assume it's a local uploads filename
+  return '/uploads/' + encodeURIComponent(String(value));
+}
+
+function appendRemoteFileToArchive(archive, remoteUrl, entryName){
+  return new Promise((resolve, reject) => {
+    try{
+      https.get(remoteUrl, (res) => {
+        if(res.statusCode && res.statusCode >= 400){
+          return resolve(); // skip file on error but don't fail whole archive
+        }
+        archive.append(res, { name: entryName });
+        // resolve when stream 'end' is emitted; but archive.finalize is called later
+        res.on('end', () => resolve());
+        res.on('error', () => resolve());
+      }).on('error', () => resolve());
+    }catch(e){
+      return resolve();
+    }
+  });
+}
 
 // ----------------- HELPERS -----------------
 function isAuthenticated(req, res, next) {
@@ -220,51 +264,83 @@ app.post("/daftar", upload.fields([
   { name: "fotoIdentitas", maxCount: 1 },
   { name: "fotoProduk", maxCount: 10 },
   { name: "legalitas", maxCount: 1 }
-]), (req, res) => {
+]), async (req, res) => {
   if (!req.session.userId) return res.redirect("/login.html");
 
   const data = req.body;
-  const files = req.files;
+  const files = req.files || {};
   const bidang = Array.isArray(data.bidang) ? data.bidang.join(", ") : data.bidang || null;
 
-  db.query(
-    `INSERT INTO pendaftaran 
-      (user_id, nama, email, nomor_hp, indi_kelom, anggota_kelompok, identitas_diri, bidang, nama_produk, latar_belakang, tujuan, uraian, foto, foto_identitas, video_produk, legalitas, inovasi_yang_dihasilkan) 
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      req.session.userId,
-      data.namaInovator,
-      data.alamatEmail,
-      data.nomorHp,
-      data.indiKelom,
-      data.anggotaKelompok,
-      data.identitasDiri,
-      bidang,
-      data.namaProduk,
-      data.latarProduk,
-      data.tujuanProduk,
-      data.uraianInovasi,
-      files?.foto?.[0]?.filename || null,
-      files?.fotoIdentitas?.[0]?.filename || null,
-      data.videoProduk || null,
-      files?.legalitas?.[0]?.filename || null,
-      data.inovasiYangDihasilkan || null
-    ],
-    (err, result) => {
-      if (err) return res.send(`<div class="error-box">❌ Gagal simpan data: ${err.message}</div>`);
-
-      const pendaftaranId = result.insertId;
-
-      // simpan foto_produk ke tabel terpisah
-      if (files.fotoProduk) {
-        files.fotoProduk.forEach(file => {
-          db.query("INSERT INTO foto_produk (pendaftaran_id, filename) VALUES (?, ?)", [pendaftaranId, file.filename]);
-        });
-      }
-
-      res.send(`<div class="success-box">✅ Data berhasil disimpan. <a href="/dashboard.html">Kembali</a></div>`);
+  try{
+    // upload single files to Cloudinary if present
+    let fotoFilename = null;
+    if(files.foto && files.foto[0] && files.foto[0].buffer){
+      const r = await uploadBufferToCloudinary(files.foto[0].buffer, { folder: 'pendaftaran' });
+      fotoFilename = r.secure_url;
     }
-  );
+
+    let fotoIdentitasFilename = null;
+    if(files.fotoIdentitas && files.fotoIdentitas[0] && files.fotoIdentitas[0].buffer){
+      const r = await uploadBufferToCloudinary(files.fotoIdentitas[0].buffer, { folder: 'pendaftaran' });
+      fotoIdentitasFilename = r.secure_url;
+    }
+
+    let legalitasFilename = null;
+    if(files.legalitas && files.legalitas[0] && files.legalitas[0].buffer){
+      const r = await uploadBufferToCloudinary(files.legalitas[0].buffer, { folder: 'pendaftaran' });
+      legalitasFilename = r.secure_url;
+    }
+
+    db.query(
+      `INSERT INTO pendaftaran 
+        (user_id, nama, email, nomor_hp, indi_kelom, anggota_kelompok, identitas_diri, bidang, nama_produk, latar_belakang, tujuan, uraian, foto, foto_identitas, video_produk, legalitas, inovasi_yang_dihasilkan) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        req.session.userId,
+        data.namaInovator,
+        data.alamatEmail,
+        data.nomorHp,
+        data.indiKelom,
+        data.anggotaKelompok,
+        data.identitasDiri,
+        bidang,
+        data.namaProduk,
+        data.latarProduk,
+        data.tujuanProduk,
+        data.uraianInovasi,
+        fotoFilename || null,
+        fotoIdentitasFilename || null,
+        data.videoProduk || null,
+        legalitasFilename || null,
+        data.inovasiYangDihasilkan || null
+      ],
+      async (err, result) => {
+        if (err) return res.send(`<div class="error-box">❌ Gagal simpan data: ${err.message}</div>`);
+
+        const pendaftaranId = result.insertId;
+
+        // simpan foto_produk ke tabel terpisah (upload each buffer)
+        if (files.fotoProduk && files.fotoProduk.length > 0) {
+          for(const file of files.fotoProduk){
+            if(file && file.buffer){
+              try{
+                const r = await uploadBufferToCloudinary(file.buffer, { folder: 'pendaftaran/foto_produk' });
+                // store the secure_url into the filename column (keeps DB schema unchanged)
+                db.query("INSERT INTO foto_produk (pendaftaran_id, filename) VALUES (?, ?)", [pendaftaranId, r.secure_url]);
+              }catch(e){
+                console.error('Gagal upload foto produk ke Cloudinary:', e);
+              }
+            }
+          }
+        }
+
+        res.send(`<div class="success-box">✅ Data berhasil disimpan. <a href="/dashboard.html">Kembali</a></div>`);
+      }
+    );
+  }catch(e){
+    console.error('Upload/DB error:', e);
+    return res.send(`<div class="error-box">❌ Gagal proses upload: ${escapeHtml(e.message || String(e))}</div>`);
+  }
 })
 
 // ----------------- TAMPILAN DATA PENGGUNA (UPDATE: full HTML layout) -----------------
@@ -380,11 +456,11 @@ app.get('/lampiran/:id', isAuthenticated, (req, res) => {
       function renderPreview(filename, label = "") {
         if (!filename) return "";
         const ext = path.extname(filename).toLowerCase();
-        const url = `/uploads/${encodeURIComponent(filename)}`;
+        const url = buildFileUrl(filename);
 
         const imgExt = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"];
         const videoExt = [".mp4", ".webm", ".ogg"];
-        if (imgExt.includes(ext)) {
+        if (imgExt.includes(ext) || url.startsWith('http')) {
           return `<div class="lampiran-item">${label ? `<div class="file-label">${escapeHtml(label)}</div>` : ""}<img class="lampiran-img" src="${url}" alt="${escapeHtml(label || filename)}"></div>`;
         } else if (videoExt.includes(ext)) {
           return `<div class="lampiran-item">${label ? `<div class="file-label">${escapeHtml(label)}</div>` : ""}<video class="media-preview" controls><source src="${url}">Browser Anda tidak mendukung video.</video></div>`;
@@ -463,7 +539,7 @@ app.get("/download/:id", isAuthenticated, (req, res) => {
 
     const row = rows[0];
 
-    db.query("SELECT filename FROM foto_produk WHERE pendaftaran_id = ?", [id], (err2, fotos) => {
+    db.query("SELECT filename FROM foto_produk WHERE pendaftaran_id = ?", [id], async (err2, fotos) => {
       if (err2) return res.send(`<div class="error-box">Gagal ambil foto produk</div>`);
 
       // Set header ZIP
@@ -473,19 +549,51 @@ app.get("/download/:id", isAuthenticated, (req, res) => {
       const archive = archiver("zip", { zlib: { level: 9 } });
       archive.pipe(res);
 
-      // Pas foto
-      if (row.foto) archive.file(`uploads/${row.foto}`, { name: "Pas_Foto_" + row.foto });
-      // Foto identitas
-      if (row.foto_identitas) archive.file(`uploads/${row.foto_identitas}`, { name: "Foto_Identitas_" + row.foto_identitas });
-      // Legalitas
-      if (row.legalitas) archive.file(`uploads/${row.legalitas}`, { name: "Legalitas_" + row.legalitas });
+      // Pas foto (if local file exists include; if URL, fetch remote and append)
+      const tasks = [];
+      if (row.foto) {
+        if (String(row.foto).startsWith('http')){
+          tasks.push(appendRemoteFileToArchive(archive, row.foto, `Pas_Foto${path.extname(row.foto) || '.jpg'}`));
+        } else {
+          const local = path.join(__dirname, 'uploads', row.foto);
+          if(fs.existsSync(local)) archive.file(local, { name: `Pas_Foto_${row.foto}` });
+        }
+      }
+
+      if (row.foto_identitas) {
+        if (String(row.foto_identitas).startsWith('http')){
+          tasks.push(appendRemoteFileToArchive(archive, row.foto_identitas, `Foto_Identitas${path.extname(row.foto_identitas) || '.jpg'}`));
+        } else {
+          const local = path.join(__dirname, 'uploads', row.foto_identitas);
+          if(fs.existsSync(local)) archive.file(local, { name: `Foto_Identitas_${row.foto_identitas}` });
+        }
+      }
+
+      if (row.legalitas) {
+        if (String(row.legalitas).startsWith('http')){
+          tasks.push(appendRemoteFileToArchive(archive, row.legalitas, `Legalitas${path.extname(row.legalitas) || '.pdf'}`));
+        } else {
+          const local = path.join(__dirname, 'uploads', row.legalitas);
+          if(fs.existsSync(local)) archive.file(local, { name: `Legalitas_${row.legalitas}` });
+        }
+      }
 
       // Semua foto produk
-      fotos.forEach((f, i) => {
-        archive.file(`uploads/${f.filename}`, { name: `Foto_Produk_${i + 1}_${f.filename}` });
-      });
+      for(const f of fotos){
+        const filename = f.filename;
+        if(!filename) continue;
+        if(String(filename).startsWith('http')){
+          tasks.push(appendRemoteFileToArchive(archive, filename, `Foto_Produk_${path.basename(filename)}`));
+        } else {
+          const local = path.join(__dirname, 'uploads', filename);
+          if(fs.existsSync(local)) archive.file(local, { name: `Foto_Produk_${filename}` });
+        }
+      }
 
-      archive.finalize();
+      // wait all remote append tasks (they resolve even if they skip)
+      Promise.all(tasks).then(()=>{
+        archive.finalize();
+      }).catch(()=> archive.finalize());
     });
   });
 });
@@ -530,7 +638,7 @@ app.get('/edit/:id', isAuthenticated, (req, res) => {
       // HTML untuk foto produk yang sudah ada
       const fotoProdukHTML = fotos.map(f =>
         `<div class="current-file">
-          <img class="thumb" src="/uploads/${encodeURIComponent(f.filename)}" width="100" alt="foto produk">
+          <img class="thumb" src="${buildFileUrl(f.filename)}" width="100" alt="foto produk">
           <a class="btn-delete" href="/lampiran/delete/${f.id}" onclick="return confirm('Hapus foto ini?')">Hapus</a>
         </div>`
       ).join("");
@@ -570,7 +678,7 @@ app.get('/edit/:id', isAuthenticated, (req, res) => {
 
               <label class="form-label">Upload Identitas Diri (opsional)</label>
               <input class="form-input" type="file" name="fotoIdentitas">
-              ${row.foto_identitas ? `<div class="current-file">File saat ini: <img class="thumb" src="/uploads/${encodeURIComponent(row.foto_identitas)}" width="100" alt="identitas"></div>` : ''}
+              ${row.foto_identitas ? `<div class="current-file">File saat ini: <img class="thumb" src="${buildFileUrl(row.foto_identitas)}" width="100" alt="identitas"></div>` : ''}
             </section>
 
             <section class="section profil">
@@ -596,7 +704,7 @@ app.get('/edit/:id', isAuthenticated, (req, res) => {
 
               <label class="form-label">Pas Foto (opsional)</label>
               <input class="form-input" type="file" name="foto">
-              ${row.foto ? `<div class="current-file">File saat ini: <img class="thumb" src="/uploads/${encodeURIComponent(row.foto)}" width="100" alt="pas foto"></div>` : ''}
+              ${row.foto ? `<div class="current-file">File saat ini: <img class="thumb" src="${buildFileUrl(row.foto)}" width="100" alt="pas foto"></div>` : ''}
 
               <br>
 
@@ -611,7 +719,7 @@ app.get('/edit/:id', isAuthenticated, (req, res) => {
 
               <label class="form-label">Legalitas (opsional)</label>
               <input class="form-input" type="file" name="legalitas">
-              ${row.legalitas ? `<div class="current-file">File saat ini: <a class="link" href="/uploads/${encodeURIComponent(row.legalitas)}" target="_blank">${escapeHtml(row.legalitas)}</a></div>` : ''}
+              ${row.legalitas ? `<div class="current-file">File saat ini: <a class="link" href="${buildFileUrl(row.legalitas)}" target="_blank">${escapeHtml(row.legalitas)}</a></div>` : ''}
 
               <label class="form-label">Inovasi yang Dihasilkan</label>
               <select class="form-select" name="inovasiYangDihasilkan">
@@ -676,17 +784,16 @@ app.get('/lampiran/delete/:id', isAuthenticated, (req, res) => {
           return res.send(`<div class="error-box">Gagal hapus foto: ${escapeHtml(err3.message)}</div>`);
         }
 
-        // 4) hapus file fisik jika ada
-        if (filename) {
+        // 4) kalau file ada di local, hapus fisik. Jika file adalah URL Cloudinary, kita skip physical unlink
+        if (filename && !String(filename).startsWith('http')) {
           const filePath = path.join(__dirname, 'uploads', filename);
           if (fs.existsSync(filePath)) {
             fs.unlink(filePath, (unlinkErr) => {
               if (unlinkErr) console.error('Gagal hapus file fisik:', unlinkErr);
-              // tetap lanjutkan redirect walau unlink gagal
               const back = req.get('Referer') || (req.session.role === 'admin' ? `/admin/lampiran/${pendaftaranId}` : `/edit/${pendaftaranId}`);
               return res.redirect(back);
             });
-            return; // sudah men-trigger unlink callback — jangan redirect dua kali
+            return; // jangan redirect dua kali
           }
         }
 
@@ -704,9 +811,9 @@ app.post("/edit/:id", upload.fields([
   { name: "fotoIdentitas", maxCount: 1 },
   { name: "fotoProduk", maxCount: 10 }, // allow multiple
   { name: "legalitas", maxCount: 1 }
-]), isAuthenticated, (req, res) => {
+]), isAuthenticated, async (req, res) => {
   const data = req.body;
-  const files = req.files;
+  const files = req.files || {};
   const id = req.params.id;
 
   // --- Bidang ---
@@ -719,79 +826,112 @@ app.post("/edit/:id", upload.fields([
     }
   }
 
-  const foto = files.foto ? files.foto[0].filename : undefined;
-  const fotoIdentitas = files.fotoIdentitas ? files.fotoIdentitas[0].filename : undefined;
-  const newFotoProduk = files.fotoProduk ? files.fotoProduk.map(f => f.filename) : [];
-  const legalitas = files.legalitas ? files.legalitas[0].filename : undefined;
+  try{
+    const foto = files.foto ? (files.foto[0] ? files.foto[0].buffer : undefined) : undefined;
+    const fotoIdentitas = files.fotoIdentitas ? (files.fotoIdentitas[0] ? files.fotoIdentitas[0].buffer : undefined) : undefined;
+    const newFotoProdukBuffers = files.fotoProduk ? files.fotoProduk.map(f => f.buffer) : [];
+    const legalitasBuf = files.legalitas ? (files.legalitas[0] ? files.legalitas[0].buffer : undefined) : undefined;
 
-  // --- Update data utama pendaftaran ---
-  const setClauses = [
-    "nama = ?",
-    "email = ?",
-    "nomor_hp = ?",
-    "indi_kelom = ?",
-    "anggota_kelompok = ?",
-    "identitas_diri = ?",
-    "bidang = ?",
-    "nama_produk = ?",
-    "latar_belakang = ?",
-    "tujuan = ?",
-    "uraian = ?"
-  ];
-
-  const params = [
-    data.namaInovator,
-    data.alamatEmail,
-    data.nomorHp,
-    data.indiKelom,
-    data.anggotaKelompok,
-    data.identitasDiri,
-    bidang,
-    data.namaProduk,
-    data.latarProduk,
-    data.tujuanProduk,
-    data.uraianInovasi
-  ];
-
-  if (foto) {
-    setClauses.push("foto = ?");
-    params.push(foto);
-  }
-  if (fotoIdentitas) {
-    setClauses.push("foto_identitas = ?");
-    params.push(fotoIdentitas);
-  }
-  if (legalitas) {
-    setClauses.push("legalitas = ?");
-    params.push(legalitas);
-  }
-
-  setClauses.push("video_produk = ?");
-  params.push(data.videoProduk || null);
-
-  setClauses.push("inovasi_yang_dihasilkan = ?");
-  params.push(data.inovasiYangDihasilkan || null);
-
-  params.push(id, req.session.userId);
-
-  const sql = `UPDATE pendaftaran SET ${setClauses.join(", ")} WHERE id = ? AND user_id = ?`;
-
-  db.query(sql, params, (err) => {
-    if (err) {
-      return res.send(`<div class="error-box">Gagal update data: ${err.message}</div>`);
+    let fotoFilename = undefined;
+    if(foto){
+      const r = await uploadBufferToCloudinary(foto, { folder: 'pendaftaran' });
+      fotoFilename = r.secure_url;
+    }
+    let fotoIdentitasFilename = undefined;
+    if(fotoIdentitas){
+      const r = await uploadBufferToCloudinary(fotoIdentitas, { folder: 'pendaftaran' });
+      fotoIdentitasFilename = r.secure_url;
+    }
+    let legalitasFilename = undefined;
+    if(legalitasBuf){
+      const r = await uploadBufferToCloudinary(legalitasBuf, { folder: 'pendaftaran' });
+      legalitasFilename = r.secure_url;
     }
 
-    // --- Tambah foto produk baru ke tabel foto_produk ---
-    if (newFotoProduk.length > 0) {
-      const values = newFotoProduk.map(fn => [id, fn]);
-      db.query("INSERT INTO foto_produk (pendaftaran_id, filename) VALUES ?", [values], (err2) => {
-        if (err2) return res.send(`<div class="error-box">Data update tapi gagal simpan foto baru: ${err2.message}</div>`);
-        res.send(`<div class="success-box">Data berhasil diupdate dan foto baru ditambahkan. <a class="link" href="/dashboard/data">Kembali ke Data Pendaftaran</a></div>`);
-      });
-    } else {
-      res.send(`<div class="success-box">Data berhasil diupdate. <a class="link" href="/dashboard/data">Kembali ke Data Pendaftaran</a></div>`);
+    const newFotoProduk = [];
+    if(newFotoProdukBuffers.length > 0){
+      for(const buf of newFotoProdukBuffers){
+        if(buf){
+          try{
+            const r = await uploadBufferToCloudinary(buf, { folder: 'pendaftaran/foto_produk' });
+            newFotoProduk.push(r.secure_url);
+          }catch(e){ console.error('Gagal upload foto produk baru:', e); }
+        }
+      }
     }
-  });
+
+    // --- Update data utama pendaftaran ---
+    const setClauses = [
+      "nama = ?",
+      "email = ?",
+      "nomor_hp = ?",
+      "indi_kelom = ?",
+      "anggota_kelompok = ?",
+      "identitas_diri = ?",
+      "bidang = ?",
+      "nama_produk = ?",
+      "latar_belakang = ?",
+      "tujuan = ?",
+      "uraian = ?"
+    ];
+
+    const params = [
+      data.namaInovator,
+      data.alamatEmail,
+      data.nomorHp,
+      data.indiKelom,
+      data.anggotaKelompok,
+      data.identitasDiri,
+      bidang,
+      data.namaProduk,
+      data.latarProduk,
+      data.tujuanProduk,
+      data.uraianInovasi
+    ];
+
+    if (fotoFilename) {
+      setClauses.push("foto = ?");
+      params.push(fotoFilename);
+    }
+    if (fotoIdentitasFilename) {
+      setClauses.push("foto_identitas = ?");
+      params.push(fotoIdentitasFilename);
+    }
+    if (legalitasFilename) {
+      setClauses.push("legalitas = ?");
+      params.push(legalitasFilename);
+    }
+
+    setClauses.push("video_produk = ?");
+    params.push(data.videoProduk || null);
+
+    setClauses.push("inovasi_yang_dihasilkan = ?");
+    params.push(data.inovasiYangDihasilkan || null);
+
+    params.push(id, req.session.userId);
+
+    const sql = `UPDATE pendaftaran SET ${setClauses.join(", ")} WHERE id = ? AND user_id = ?`;
+
+    db.query(sql, params, (err) => {
+      if (err) {
+        return res.send(`<div class="error-box">Gagal update data: ${err.message}</div>`);
+      }
+
+      // --- Tambah foto produk baru ke tabel foto_produk ---
+      if (newFotoProduk.length > 0) {
+        const values = newFotoProduk.map(fn => [id, fn]);
+        db.query("INSERT INTO foto_produk (pendaftaran_id, filename) VALUES ?", [values], (err2) => {
+          if (err2) return res.send(`<div class="error-box">Data update tapi gagal simpan foto baru: ${err2.message}</div>`);
+          res.send(`<div class="success-box">Data berhasil diupdate dan foto baru ditambahkan. <a class="link" href="/dashboard/data">Kembali ke Data Pendaftaran</a></div>`);
+        });
+      } else {
+        res.send(`<div class="success-box">Data berhasil diupdate. <a class="link" href="/dashboard/data">Kembali ke Data Pendaftaran</a></div>`);
+      }
+    });
+  }catch(e){
+    console.error('Edit upload error:', e);
+    return res.send(`<div class="error-box">Gagal proses upload: ${escapeHtml(e.message || String(e))}</div>`);
+  }
 });
 
 // ------------------ LIHAT SEMUA DATA (ADMIN) (UPDATE: full HTML layout) -----------------
@@ -835,8 +975,8 @@ app.get('/admin/data', isAdmin, (req, res) => {
         const attachPreview = previewFiles.map(a => {
           const ext = (a.file || '').split('.').pop().toLowerCase();
           const imgExt = ['jpg','jpeg','png','gif','webp','svg'];
-          if (imgExt.includes(ext)) {
-            return `<img class="thumb-small" src="/uploads/${encodeURIComponent(a.file)}" alt="${escapeHtml(a.label)}">`;
+          if (imgExt.includes(ext) || String(a.file).startsWith('http')) {
+            return `<img class="thumb-small" src="${buildFileUrl(a.file)}" alt="${escapeHtml(a.label)}">`;
           } else {
             return `<div style="font-size:12px;padding:4px 6px;border-radius:4px;background:#f3f3f3;border:1px solid #e6e6e6;">${escapeHtml(a.label)}</div>`;
           }
@@ -922,10 +1062,10 @@ app.get('/admin/lampiran/:id', isAdmin, (req, res) => {
       function renderPreview(filename, label = "") {
         if (!filename) return "";
         const ext = path.extname(filename).toLowerCase();
-        const url = `/uploads/${encodeURIComponent(filename)}`;
+        const url = buildFileUrl(filename);
         const imgExt = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"];
         const videoExt = [".mp4", ".webm", ".ogg"];
-        if (imgExt.includes(ext)) {
+        if (imgExt.includes(ext) || url.startsWith('http')) {
           return `<div class="lampiran-item"><div class="file-label">${escapeHtml(label)}</div><img class="lampiran-img" src="${url}" alt="${escapeHtml(label || filename)}"></div>`;
         } else if (videoExt.includes(ext)) {
           return `<div class="lampiran-item"><div class="file-label">${escapeHtml(label)}</div><video class="media-preview" controls><source src="${url}">Browser Anda tidak mendukung video.</video></div>`;
@@ -986,7 +1126,7 @@ app.get("/admin/download/:id", isAdmin, (req, res) => {
     if (err || !rows || rows.length === 0) return res.send(`<div class="error-box">Data tidak ditemukan</div>`);
     const row = rows[0];
 
-    db.query("SELECT filename FROM foto_produk WHERE pendaftaran_id = ?", [id], (err2, fotos) => {
+    db.query("SELECT filename FROM foto_produk WHERE pendaftaran_id = ?", [id], async (err2, fotos) => {
       if (err2) return res.send(`<div class="error-box">Gagal ambil foto produk</div>`);
 
       res.setHeader("Content-Disposition", `attachment; filename=lampiran_${id}.zip`);
@@ -995,15 +1135,48 @@ app.get("/admin/download/:id", isAdmin, (req, res) => {
       const archive = archiver("zip", { zlib: { level: 9 } });
       archive.pipe(res);
 
-      if (row.foto) archive.file(`uploads/${row.foto}`, { name: "Pas_Foto_" + row.foto });
-      if (row.foto_identitas) archive.file(`uploads/${row.foto_identitas}`, { name: "Foto_Identitas_" + row.foto_identitas });
-      if (row.legalitas) archive.file(`uploads/${row.legalitas}`, { name: "Legalitas_" + row.legalitas });
+      const tasks = [];
+      if (row.foto) {
+        if (String(row.foto).startsWith('http')){
+          tasks.push(appendRemoteFileToArchive(archive, row.foto, `Pas_Foto${path.extname(row.foto) || '.jpg'}`));
+        } else {
+          const local = path.join(__dirname, 'uploads', row.foto);
+          if(fs.existsSync(local)) archive.file(local, { name: `Pas_Foto_${row.foto}` });
+        }
+      }
 
-      fotos.forEach((f, i) => {
-        archive.file(`uploads/${f.filename}`, { name: `Foto_Produk_${i + 1}_${f.filename}` });
-      });
+      if (row.foto_identitas) {
+        if (String(row.foto_identitas).startsWith('http')){
+          tasks.push(appendRemoteFileToArchive(archive, row.foto_identitas, `Foto_Identitas${path.extname(row.foto_identitas) || '.jpg'}`));
+        } else {
+          const local = path.join(__dirname, 'uploads', row.foto_identitas);
+          if(fs.existsSync(local)) archive.file(local, { name: `Foto_Identitas_${row.foto_identitas}` });
+        }
+      }
 
-      archive.finalize();
+      if (row.legalitas) {
+        if (String(row.legalitas).startsWith('http')){
+          tasks.push(appendRemoteFileToArchive(archive, row.legalitas, `Legalitas${path.extname(row.legalitas) || '.pdf'}`));
+        } else {
+          const local = path.join(__dirname, 'uploads', row.legalitas);
+          if(fs.existsSync(local)) archive.file(local, { name: `Legalitas_${row.legalitas}` });
+        }
+      }
+
+      for(const f of fotos){
+        const filename = f.filename;
+        if(!filename) continue;
+        if(String(filename).startsWith('http')){
+          tasks.push(appendRemoteFileToArchive(archive, filename, `Foto_Produk_${path.basename(filename)}`));
+        } else {
+          const local = path.join(__dirname, 'uploads', filename);
+          if(fs.existsSync(local)) archive.file(local, { name: `Foto_Produk_${filename}` });
+        }
+      }
+
+      Promise.all(tasks).then(()=>{
+        archive.finalize();
+      }).catch(()=> archive.finalize());
     });
   });
 });
@@ -1101,12 +1274,12 @@ app.get("/delete/:id", isAuthenticated, (req, res) => {
           return res.send(`<div class="error-box">Data tidak ditemukan atau Anda tidak berhak menghapus</div>`);
         }
 
-        // 4. Hapus file fisik (jika ada)
+        // 4. Hapus file fisik (jika ada). Untuk Cloudinary-stored URLs, tidak ada file lokal, jadi skip.
         const allFiles = [];
-        if (row.foto) allFiles.push(row.foto);
-        if (row.foto_identitas) allFiles.push(row.foto_identitas);
-        if (row.legalitas) allFiles.push(row.legalitas);
-        fotos.forEach(f => allFiles.push(f.filename));
+        if (row.foto && !String(row.foto).startsWith('http')) allFiles.push(row.foto);
+        if (row.foto_identitas && !String(row.foto_identitas).startsWith('http')) allFiles.push(row.foto_identitas);
+        if (row.legalitas && !String(row.legalitas).startsWith('http')) allFiles.push(row.legalitas);
+        fotos.forEach(f => { if(f.filename && !String(f.filename).startsWith('http')) allFiles.push(f.filename); });
 
         allFiles.forEach(file => {
           const filePath = path.join(__dirname, "uploads", file);
@@ -1147,5 +1320,3 @@ app.get('/', (req, res) => {
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
 });
-
-
