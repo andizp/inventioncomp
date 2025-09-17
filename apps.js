@@ -12,7 +12,7 @@ const bcrypt = require("bcrypt");
 const session = require("express-session");
 
 const app = express();
-const port = 3000;
+const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(express.static(__dirname));
@@ -20,7 +20,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use(session({
   secret: "rahasia_super",
   resave: false,
-  saveUninitialized: true
+  saveUninitialized: true,
+  cookie: { secure: false }
 }));
 
 // Pastikan folder uploads ada
@@ -1139,6 +1140,11 @@ app.get("/admin/delete/:id", isAdmin, (req, res) => {
 });
 
 // ----------------- START SERVER -----------------
+app.get('/', (req, res) => {
+  res.send('Server sudah jalan di Railway!');
+});
+
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
 });
+
