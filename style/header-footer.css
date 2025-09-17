@@ -33,6 +33,7 @@ body{
 
 /* Header */
 .site-header{
+  width: 100%;
   background:var(--header-bg);
   border-bottom:1px solid var(--border);
   position:sticky;
@@ -223,6 +224,7 @@ body{
     position: static;
   }
 }
+
 
 
 
