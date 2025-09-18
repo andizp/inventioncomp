@@ -48,6 +48,21 @@
 .lampiran-img{max-width:100%;height:120px;object-fit:cover;border-radius:6px}
 .media-preview{width:100%;height:150px;background:#000;border-radius:6px}
 
+/* cards */
+.cards-grid{ display:flex; flex-wrap:wrap; gap:12px; margin-top:10px; }
+.card{ width:260px; background:#fff; border-radius:10px; overflow:hidden; box-shadow:0 8px 20px rgba(2,6,23,0.05); cursor:pointer; transition:transform .12s; display:flex; flex-direction:column; }
+.card:hover{ transform:translateY(-6px); }
+.card-image img{ width:100%; height:160px; object-fit:cover; display:block; }
+.card-body{ padding:12px; }
+.card-title{ margin:0 0 8px; font-size:1.05rem; }
+.card-excerpt{ margin:0;color:#6b7280;font-size:0.92rem; }
+
+/* modal */
+.modal{ position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.45); z-index:9999; padding:18px; }
+.modal-inner{ max-width:720px; width:100%; background:#fff; border-radius:12px; padding:18px; position:relative; }
+.modal-close{ position:absolute; right:12px; top:12px; border:none; background:transparent; font-size:18px; cursor:pointer; }
+
+
 /* small screens */
 @media (max-width:900px){
   .hero-title{font-size:20px}
