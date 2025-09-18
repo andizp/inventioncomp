@@ -1312,6 +1312,182 @@ app.get("/admin/delete/:id", isAdmin, (req, res) => {
   });
 });
 
+// ----------------- DASHBOARD CONTENT (ADMIN CRUD) (Cloudinary-enabled) -----------------
+// Pastikan block ini ditempatkan setelah definisi `upload` dan `isAdmin` dan sebelum app.listen
+
+// Form penambahan konten (admin)
+app.get('/admin/content', isAdmin, (req, res) => {
+  db.query('SELECT * FROM dashboard_content ORDER BY created_at DESC', (err, rows) => {
+    if (err) return res.send(renderLayout('Kelola Konten Dashboard', `<div class="page"><div class="error-box">Error: ${escapeHtml(err.message)}</div></div>`));
+
+    const rowsHtml = (rows || []).map(r => {
+      const imageUrl = r.image ? buildFileUrl(r.image) : null;
+      return `
+        <tr>
+          <td>${r.id}</td>
+          <td>${escapeHtml(r.title)}</td>
+          <td>${escapeHtml(new Date(r.created_at).toLocaleString())}</td>
+          <td>${imageUrl ? `<img src="${escapeHtml(imageUrl)}" width="80" alt="thumb">` : '-'}</td>
+          <td>
+            <form method="POST" action="/admin/content/delete/${r.id}" onsubmit="return confirm('Hapus konten ini?')">
+              <button type="submit">Hapus</button>
+            </form>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    const body = `
+      <div class="page">
+        <h2 class="heading">Kelola Konten Dashboard</h2>
+
+        <section class="form-section">
+          <h3 class="section-title">Tambah Konten Baru</h3>
+          <form method="POST" action="/admin/content/create" enctype="multipart/form-data">
+            <div style="margin-bottom:8px">
+              <label>Judul</label><br>
+              <input name="title" required style="width:100%; padding:8px" />
+            </div>
+            <div style="margin-bottom:8px">
+              <label>Deskripsi</label><br>
+              <textarea name="description" rows="4" style="width:100%; padding:8px"></textarea>
+            </div>
+            <div style="margin-bottom:8px">
+              <label>Gambar (opsional)</label><br>
+              <input type="file" name="image" accept="image/*" />
+            </div>
+            <div>
+              <button type="submit">Simpan Konten</button>
+            </div>
+          </form>
+        </section>
+
+        <section style="margin-top:18px">
+          <h3 class="section-title">Daftar Konten</h3>
+          <div class="table-responsive">
+            <table border="1" cellpadding="8" style="width:100%; border-collapse:collapse;">
+              <thead><tr><th>ID</th><th>Judul</th><th>Waktu</th><th>Gambar</th><th>Aksi</th></tr></thead>
+              <tbody>${rowsHtml}</tbody>
+            </table>
+          </div>
+        </section>
+
+        <br><a class="btn-link" href="/dashboard.html">Kembali ke Dashboard</a>
+      </div>
+    `;
+
+    res.send(renderLayout('Kelola Konten Dashboard', body));
+  });
+});
+
+// Create content (upload gambar optional) - Cloudinary-enabled
+app.post('/admin/content/create', isAdmin, upload.single('image'), async (req, res) => {
+  const title = (req.body.title || '').trim();
+  const description = req.body.description || null;
+
+  if (!title) return res.send(renderLayout('Error', `<div class="page"><div class="error-box">Judul harus diisi.</div></div>`));
+
+  try {
+    let storedImage = null;
+
+    // Jika file di-upload (memoryStorage => buffer tersedia), upload ke Cloudinary
+    if (req.file && req.file.buffer) {
+      try {
+        const r = await uploadBufferToCloudinary(req.file.buffer, { folder: 'dashboard_content' });
+        if (r && r.secure_url) storedImage = r.secure_url;
+      } catch (e) {
+        console.error('Gagal upload gambar konten ke Cloudinary:', e);
+        // lanjutkan tanpa gambar
+      }
+    } else if (req.file && req.file.filename) {
+      // legacy: kalau ada filename (lokal) simpan seperti semula
+      storedImage = req.file.filename;
+    }
+
+    db.query('INSERT INTO dashboard_content (title, description, image) VALUES (?, ?, ?)', [title, description, storedImage], (err, result) => {
+      if (err) {
+        return res.send(renderLayout('Error', `<div class="page"><div class="error-box">Gagal simpan: ${escapeHtml(err.message)}</div></div>`));
+      }
+      res.redirect('/admin/content');
+    });
+  } catch (e) {
+    console.error('Error pada create content:', e);
+    return res.send(renderLayout('Error', `<div class="page"><div class="error-box">Gagal proses: ${escapeHtml(e.message || String(e))}</div></div>`));
+  }
+});
+
+// Hapus konten (hapus db record + hapus file jika file lokal)
+app.post('/admin/content/delete/:id', isAdmin, (req, res) => {
+  const id = req.params.id;
+  db.query('SELECT image FROM dashboard_content WHERE id = ?', [id], (err, rows) => {
+    if (err) return res.send(renderLayout('Error', `<div class="page"><div class="error-box">Error: ${escapeHtml(err.message)}</div></div>`));
+    if (!rows || rows.length === 0) return res.redirect('/admin/content');
+
+    const image = rows[0].image;
+    db.query('DELETE FROM dashboard_content WHERE id = ?', [id], (err2) => {
+      if (err2) return res.send(renderLayout('Error', `<div class="page"><div class="error-box">Gagal hapus: ${escapeHtml(err2.message)}</div></div>`));
+
+      // Jika image adalah path/file lokal (bukan URL), hapus fisik
+      if (image && !String(image).startsWith('http')) {
+        const fp = path.join(__dirname, 'uploads', image);
+        if (fs.existsSync(fp)) {
+          fs.unlink(fp, (e) => { if (e) console.error('Gagal hapus file:', e); });
+        }
+      }
+      // Jika image adalah URL (mis. Cloudinary), kita sengaja tidak memanggil cloudinary.uploader.destroy()
+      // agar tidak perlu menyimpan public_id di DB — konsisten dengan perilaku file lainnya di aplikasi Anda.
+
+      res.redirect('/admin/content');
+    });
+  });
+});
+
+// API publik (dipakai oleh dashboard client-side) -> return JSON list konten (image URLs resolved)
+app.get('/api/contents', (req, res) => {
+  db.query('SELECT id, title, description, image, created_at FROM dashboard_content ORDER BY created_at DESC', (err, rows) => {
+    if (err) return res.status(500).json({ error: 'Gagal ambil data' });
+
+    const result = (rows || []).map(r => ({
+      id: r.id,
+      title: r.title,
+      description: r.description,
+      imageUrl: r.image ? buildFileUrl(r.image) : null,
+      created_at: r.created_at
+    }));
+    res.json(result);
+  });
+});
+
+// ----------------- VIEW SINGLE CONTENT PAGE -----------------
+app.get('/content/:id', (req, res) => {
+  const id = req.params.id;
+  db.query('SELECT id, title, description, image, created_at FROM dashboard_content WHERE id = ? LIMIT 1', [id], (err, rows) => {
+    if (err) {
+      return res.send(renderLayout('Error', `<div class="page"><div class="error-box">Gagal ambil data: ${escapeHtml(err.message || '')}</div></div>`));
+    }
+    if (!rows || rows.length === 0) {
+      return res.send(renderLayout('Konten Tidak Ditemukan', `<div class="page"><div class="error-box">Konten tidak ditemukan.</div></div>`));
+    }
+
+    const item = rows[0];
+    let imageUrl = item.image ? buildFileUrl(item.image) : null;
+
+    const body = `
+      <div class="page" style="max-width:900px;margin:20px auto;padding:18px;">
+        <a class="btn-link" href="/dashboard.html" style="display:inline-block;margin-bottom:12px">&larr; Kembali ke Dashboard</a>
+        <article style="background:#fff;border-radius:12px;padding:18px;border:1px solid var(--border);">
+          ${imageUrl ? `<div style="margin-bottom:14px"><img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(item.title)}" style="width:100%; height:auto; max-height:520px; object-fit:cover; border-radius:8px;"></div>` : ''}
+          <h1 style="margin:0 0 6px">${escapeHtml(item.title)}</h1>
+          <div style="color:var(--muted); font-size:0.92rem; margin-bottom:12px">${escapeHtml(new Date(item.created_at).toLocaleString())}</div>
+          <div style="line-height:1.6; color:var(--text)">${escapeHtml(item.description || '')}</div>
+        </article>
+      </div>
+    `;
+
+    res.send(renderLayout(item.title || 'Konten', body));
+  });
+});
+
 // ----------------- START SERVER -----------------
 app.get('/', (req, res) => {
   res.send('Server sudah jalan di Railway!');
@@ -1320,3 +1496,4 @@ app.get('/', (req, res) => {
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
 });
+
