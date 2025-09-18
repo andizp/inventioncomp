@@ -151,13 +151,15 @@ function renderLayout(title, bodyHtml, opts = {}){
           </div>
 
           <div id="loggedIn" class="logged-in" hidden>
-            <div class="user" id="userProfile" tabindex="0">
-              <svg class="user-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M12 12a4 4 0 100-8 4 4 0 000 8z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M4 20a8 8 0 0116 0" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              <span id="userName">User</span>
-            </div>
+           <a href="/account">
+              <div class="user" id="userProfile" tabindex="0">
+                <svg class="user-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 12a4 4 0 100-8 4 4 0 000 8z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M4 20a8 8 0 0116 0" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span id="userName">User</span>
+              </div>
+            </a>
             <a id="logoutBtn" class="btn-logout" href="/logout" title="Logout">
               Logout
             </a>
@@ -1628,5 +1630,6 @@ app.get('/', (req, res) => {
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
 });
+
 
 
