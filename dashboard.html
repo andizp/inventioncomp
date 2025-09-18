@@ -100,9 +100,22 @@
     </section>
 
     <!-- Admin announcement area (initially empty) -->
-    <section class="admin-announcement" id="adminAnnouncement" aria-live="polite"></section>
+    <!-- Container untuk konten dashboard (cards) -->
+    <section id="adminContentsSection" class="dashboard-contents">
+      <h2>Konten & Pengumuman</h2>
+      <div id="dashboardContents" class="cards-grid"></div>
+    </section>
 
-    <section id="extra" class="extras"></section>
+    <!-- Modal sederhana untuk melihat detail -->
+    <div id="contentModal" class="modal" style="display:none;">
+      <div class="modal-inner">
+        <button id="closeModal" class="modal-close">✕</button>
+        <img id="modalImage" src="" alt="" style="max-width:100%;display:block;margin-bottom:12px;">
+        <h3 id="modalTitle"></h3>
+        <p id="modalDesc"></p>
+      </div>
+    </div>
+
   </main>
 
   <footer class="site-footer">
