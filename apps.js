@@ -1488,6 +1488,138 @@ app.get('/content/:id', (req, res) => {
   });
 });
 
+// ----------------- AKUN - GANTI USERNAME / PASSWORD -----------------
+app.get('/account', isAuthenticated, (req, res) => {
+  // ambil data user untuk menampilkan username sekarang (mengambil dari DB untuk sinkron)
+  db.query('SELECT id, username FROM users WHERE id = ? LIMIT 1', [req.session.userId], (err, rows) => {
+    if (err) return res.send(renderLayout('Error', `<div class="page"><div class="error-box">Gagal ambil data user: ${escapeHtml(err.message)}</div></div>`));
+    if (!rows || rows.length === 0) return res.send(renderLayout('Error', `<div class="page"><div class="error-box">User tidak ditemukan.</div></div>`));
+    const user = rows[0];
+
+    const body = `
+      <div class="page" style="max-width:720px;margin:20px auto;">
+        <h2 class="heading">Pengaturan Akun</h2>
+
+        <section style="margin-top:12px;background:#fff;padding:16px;border-radius:8px;border:1px solid var(--border);">
+          <h3 style="margin:0 0 8px">Username saat ini</h3>
+          <p style="margin:0 0 12px"><strong>${escapeHtml(user.username)}</strong></p>
+
+          <form method="POST" action="/account/change-username">
+            <div style="margin-bottom:8px">
+              <label>Username baru</label><br>
+              <input name="newUsername" required style="width:100%;padding:8px" />
+            </div>
+            <div style="margin-bottom:8px">
+              <label>Masukkan password Anda untuk verifikasi</label><br>
+              <input type="password" name="currentPasswordForUsername" required style="width:100%;padding:8px" />
+            </div>
+            <div>
+              <button type="submit">Ganti Username</button>
+            </div>
+          </form>
+        </section>
+
+        <section style="margin-top:16px;background:#fff;padding:16px;border-radius:8px;border:1px solid var(--border);">
+          <h3 style="margin:0 0 8px">Ganti Password</h3>
+          <form method="POST" action="/account/change-password">
+            <div style="margin-bottom:8px">
+              <label>Password saat ini</label><br>
+              <input type="password" name="currentPassword" required style="width:100%;padding:8px" />
+            </div>
+            <div style="margin-bottom:8px">
+              <label>Password baru</label><br>
+              <input type="password" name="newPassword" required minlength="6" style="width:100%;padding:8px" />
+            </div>
+            <div style="margin-bottom:8px">
+              <label>Konfirmasi password baru</label><br>
+              <input type="password" name="confirmNewPassword" required minlength="6" style="width:100%;padding:8px" />
+            </div>
+            <div>
+              <button type="submit">Ganti Password</button>
+            </div>
+          </form>
+        </section>
+
+        <br><a class="btn-link" href="/dashboard.html">Kembali ke Dashboard</a>
+      </div>
+    `;
+
+    res.send(renderLayout('Pengaturan Akun', body));
+  });
+});
+
+// Change username
+app.post('/account/change-username', isAuthenticated, (req, res) => {
+  const userId = req.session.userId;
+  const newUsername = (req.body.newUsername || '').trim();
+  const currentPassword = req.body.currentPasswordForUsername || '';
+
+  if (!newUsername) return res.send(renderLayout('Error', `<div class="page"><div class="error-box">Username baru harus diisi.</div></div>`));
+
+  // ambil user untuk cek password & cek username duplicate
+  db.query('SELECT id, username, password FROM users WHERE id = ? LIMIT 1', [userId], (err, rows) => {
+    if (err) return res.send(renderLayout('Error', `<div class="page"><div class="error-box">Gagal: ${escapeHtml(err.message)}</div></div>`));
+    if (!rows || rows.length === 0) return res.send(renderLayout('Error', `<div class="page"><div class="error-box">User tidak ditemukan.</div></div>`));
+
+    const user = rows[0];
+
+    // verifikasi password
+    if (!bcrypt.compareSync(currentPassword, user.password)) {
+      return res.send(renderLayout('Error', `<div class="page"><div class="error-box">Password salah. Username tidak diubah.</div></div>`));
+    }
+
+    // cek apakah username baru sudah dipakai
+    db.query('SELECT id FROM users WHERE username = ? AND id <> ? LIMIT 1', [newUsername, userId], (err2, dupRows) => {
+      if (err2) return res.send(renderLayout('Error', `<div class="page"><div class="error-box">Gagal: ${escapeHtml(err2.message)}</div></div>`));
+      if (dupRows && dupRows.length > 0) {
+        return res.send(renderLayout('Error', `<div class="page"><div class="error-box">Username sudah digunakan, silakan pilih yang lain.</div></div>`));
+      }
+
+      // update username
+      db.query('UPDATE users SET username = ? WHERE id = ?', [newUsername, userId], (err3) => {
+        if (err3) return res.send(renderLayout('Error', `<div class="page"><div class="error-box">Gagal update username: ${escapeHtml(err3.message)}</div></div>`));
+        // perbarui session agar header menampilkan username baru
+        req.session.username = newUsername;
+        res.send(renderLayout('Sukses', `<div class="page"><div class="success-box">Username berhasil diubah menjadi <strong>${escapeHtml(newUsername)}</strong>. <a class="link" href="/account">Kembali ke Pengaturan</a></div></div>`));
+      });
+    });
+  });
+});
+
+// Change password
+app.post('/account/change-password', isAuthenticated, (req, res) => {
+  const userId = req.session.userId;
+  const currentPassword = req.body.currentPassword || '';
+  const newPassword = req.body.newPassword || '';
+  const confirmNew = req.body.confirmNewPassword || '';
+
+  if (!currentPassword || !newPassword || !confirmNew) {
+    return res.send(renderLayout('Error', `<div class="page"><div class="error-box">Semua field harus diisi.</div></div>`));
+  }
+  if (newPassword !== confirmNew) {
+    return res.send(renderLayout('Error', `<div class="page"><div class="error-box">Konfirmasi password tidak cocok.</div></div>`));
+  }
+  if (newPassword.length < 6) {
+    return res.send(renderLayout('Error', `<div class="page"><div class="error-box">Password baru minimal 6 karakter.</div></div>`));
+  }
+
+  db.query('SELECT password FROM users WHERE id = ? LIMIT 1', [userId], (err, rows) => {
+    if (err) return res.send(renderLayout('Error', `<div class="page"><div class="error-box">Gagal: ${escapeHtml(err.message)}</div></div>`));
+    if (!rows || rows.length === 0) return res.send(renderLayout('Error', `<div class="page"><div class="error-box">User tidak ditemukan.</div></div>`));
+
+    const hashed = rows[0].password;
+    if (!bcrypt.compareSync(currentPassword, hashed)) {
+      return res.send(renderLayout('Error', `<div class="page"><div class="error-box">Password saat ini salah.</div></div>`));
+    }
+
+    const newHashed = bcrypt.hashSync(newPassword, 10);
+    db.query('UPDATE users SET password = ? WHERE id = ?', [newHashed, userId], (err2) => {
+      if (err2) return res.send(renderLayout('Error', `<div class="page"><div class="error-box">Gagal update password: ${escapeHtml(err2.message)}</div></div>`));
+      res.send(renderLayout('Sukses', `<div class="page"><div class="success-box">Password berhasil diubah. Silakan login kembali jika perlu. <a class="link" href="/dashboard.html">Kembali ke Dashboard</a></div></div>`));
+    });
+  });
+});
+
 // ----------------- START SERVER -----------------
 app.get('/', (req, res) => {
   res.send('Server sudah jalan di Railway!');
@@ -1496,4 +1628,5 @@ app.get('/', (req, res) => {
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
 });
+
 
