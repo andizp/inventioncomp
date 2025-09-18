@@ -208,3 +208,48 @@
     initHeroSlider();
   }
 })();
+
+(async function(){
+  async function loadContents(){
+    try {
+      const res = await fetch('/api/contents');
+      if(!res.ok) return;
+      const data = await res.json();
+      const container = document.getElementById('dashboardContents');
+      if(!container) return;
+      container.innerHTML = data.map(item => {
+        return `
+          <article class="card" data-id="${item.id}" data-title="${escapeHtml(item.title)}" data-desc="${escapeHtml(item.description||'')}" data-img="${item.imageUrl||''}">
+            ${item.imageUrl ? `<div class="card-image"><img src="${item.imageUrl}" alt="${escapeHtml(item.title)}"></div>` : ''}
+            <div class="card-body">
+              <h4 class="card-title">${escapeHtml(item.title)}</h4>
+              <p class="card-excerpt">${escapeHtml((item.description||'').slice(0,150))}${(item.description && item.description.length>150)?'...':''}</p>
+            </div>
+          </article>
+        `;
+      }).join('');
+      // attach click handlers
+      // attach click handlers -> buka halaman konten penuh (bukan modal)
+      document.querySelectorAll('.card').forEach(c => {
+        c.addEventListener('click', ()=> {
+          const id = c.dataset.id;
+          if (id) {
+            // redirect ke route server /content/:id
+            window.location.href = '/content/' + encodeURIComponent(id);
+          }
+        });
+      });
+    } catch(e){ console.error(e); }
+  }
+  function escapeHtml(s){
+    if(!s) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  document.getElementById('closeModal').addEventListener('click', ()=> { document.getElementById('contentModal').style.display='none'; });
+  // close modal on outside click
+  document.getElementById('contentModal').addEventListener('click', (e)=> {
+    if(e.target === document.getElementById('contentModal')) document.getElementById('contentModal').style.display='none';
+  });
+
+  loadContents();
+})();
