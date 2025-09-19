@@ -166,61 +166,171 @@ body{
 .footer-inner p{margin:0;color:var(--muted);font-size:14px}
 
 /* small screens */
-@media (max-width:1000px){
-  .brand .text {display: none !important;}
+/* Mobile / tablet adjustments: applies when viewport width <= 1000px */
+@media (max-width:1000px) {
 
-  /* sedikit penyesuaian spacing supaya rapi */
-  .brand { gap: 8px; }
-  .logo { width: 40px; height: 40px; font-size: 18px; }
-  .header-inner { padding-left: 12px; padding-right: 12px; }
+  /* Simplify brand: hide text but keep logo */
+  .brand .text {
+    display: none !important;
+  }
+
+  .brand {
+    gap: 8px;
+    align-items: center;
+  }
+
+  .logo {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+    border-radius: 8px;
+  }
+
+  /* Tighter header padding on small screens */
+  .header-inner {
+    padding-left: 12px;
+    padding-right: 12px;
+    gap: 10px;
+  }
+
+  /* Hamburger: show on mobile */
+  .hamburger {
+    display: inline-block;
+    background: transparent;
+    border: 0;
+    padding: 6px;
+    margin-left: 6px;
+    cursor: pointer;
+  }
+
+  /* Default hidden primary nav on mobile; JS should toggle .open to show */
+  .primary {
+    position: absolute;
+    right: 16px;
+    top: calc(100% + 6px); /* position under header */
+    width: 240px;
+    display: none;
+    box-shadow: var(--shadow);
+    border-radius: 8px;
+    background: var(--header-bg);
+    padding: 8px;
+    z-index: 90;
+  }
+
+  /* When toggled open from JS: display block */
+  .primary.open {
+    display: block;
+  }
+
+  /* Nav list stacked and touch friendly */
+  .nav-list {
+    display: block;
+    padding: 8px;
+    margin: 0;
+    list-style: none;
+  }
+
+  .nav-list .nav-link {
+    display: block;
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 15px;
+    text-decoration: none;
+    color: var(--text);
+  }
+
+  .nav-list .nav-link + .nav-link {
+    margin-top: 6px;
+  }
+
+  .nav-link:hover {
+    background: #f3f7f7;
+    color: var(--accent-dark);
+  }
+
+  /* Ensure header content floats above the mobile panel */
+  .header-inner {
+    position: relative;
+    z-index: 80;
+  }
+
+  .primary {
+    z-index: 70;
+  }
+
+  /* User area: compact & horizontal */
+  .user-area {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .user-area .logged-in {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* Guest links hidden by default unless not([hidden]) */
+  .guest-links {
+    display: none;
+    gap: 8px;
+    align-items: center;
+  }
+  .guest-links:not([hidden]) {
+    display: flex;
+  }
+
+  /* Buttons tuned for touch */
+  .btn-logout,
+  .btn-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 36px;
+    padding: 6px 12px;
+    font-size: 14px;
+    border-radius: 8px;
+    box-sizing: border-box;
+  }
+
+  /* Make user box touch-friendly */
+  .user {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+  }
+
+  /* If header becomes crowded, wrap into two lines gracefully */
+  .header-inner {
+    flex-wrap: nowrap; /* try to keep single row; if you want wrap: change to wrap */
+  }
+
+  /* Small improvements: increase tappable area for icons */
+  .hamburger-box {
+    width: 36px;
+    height: 24px;
+  }
+  .hamburger-inner, .hamburger-inner::before, .hamburger-inner::after {
+    height: 2px;
+  }
+
+  /* Ensure nav width doesn't overflow small devices */
+  @media (max-width:420px) {
+    .primary {
+      right: 8px;
+      left: 8px;
+      width: auto;
+    }
+    .nav-list .nav-link {
+      padding-left: 12px;
+      padding-right: 12px;
+    }
+  }
 }
-  .nav-list{display:block;background:var(--header-bg); padding:12px; border-radius:8px; box-shadow:var(--shadow); margin-top:8px}
-  .nav-list .nav-link{display:block;padding:10px 12px}
-  .primary{position:absolute; right:16px; top:64px; width:220px; display:none}
-  .hamburger{display:inline-block}
-  .user-area .logged-in{display:flex;flex-direction:row;align-items:center;gap:8px}
-
-  /* default: hide guest-links unless JS explicitly removes hidden attribute */
-  .guest-links{display:none}
-  .guest-links:not([hidden]){display:flex;gap:8px}
-  .user-area .logged-in:not([hidden]){display:flex}
-
-  .nav-list{width:220px}
-
-  /* ensure header content floats above the mobile panel */
-  .header-inner { position:relative; z-index:80 }
-  .primary { z-index:70 }
-}
-
-/* --- Perbaikan align: pastikan user area (Logout) rata pada layar besar --- */
-
-/* Pastikan logged-in selalu menggunakan flex + center alignment (semua ukuran) */
-.user-area .logged-in {
-  display: flex;
-  align-items: center;   /* vertikal center */
-  gap: 8px;
-}
-
-/* Buat tombol (logout / guest) menjadi inline-flex agar teks dan ikon benar-benar center */
-.btn-logout,
-.btn-link {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 36px;          /* seragamkan tinggi tombol */
-  padding: 6px 12px;     /* cukup ruang horizontals */
-  line-height: 1;        /* hindari offset baseline */
-  box-sizing: border-box;
-}
-
-/* Pastikan avatar / user box juga terpusat secara vertikal */
-.user {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-}
-
 /* Untuk layar besar: pastikan guest-links tampil rapi di bar (jika dipakai) */
 @media (min-width:1001px) {
   .guest-links {
@@ -234,6 +344,7 @@ body{
     position: static;
   }
 }
+
 
 
 
