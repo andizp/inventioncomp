@@ -166,7 +166,7 @@ body{
 .footer-inner p{margin:0;color:var(--muted);font-size:14px}
 
 /* small screens */
-@media (max-width:1080px){
+@media (max-width:1000px){
   .brand .text {display: none !important;}
 
   /* sedikit penyesuaian spacing supaya rapi */
@@ -222,7 +222,7 @@ body{
 }
 
 /* Untuk layar besar: pastikan guest-links tampil rapi di bar (jika dipakai) */
-@media (min-width:1081px) {
+@media (min-width:1001px) {
   .guest-links {
     display: flex;
     gap: 8px;
@@ -234,6 +234,7 @@ body{
     position: static;
   }
 }
+
 
 
 
