@@ -151,15 +151,13 @@ function renderLayout(title, bodyHtml, opts = {}){
           </div>
 
           <div id="loggedIn" class="logged-in" hidden>
-           <a href="/account">
-              <div class="user" id="userProfile" tabindex="0">
-                <svg class="user-icon" viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M12 12a4 4 0 100-8 4 4 0 000 8z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-                  <path d="M4 20a8 8 0 0116 0" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-                <span id="userName">User</span>
-              </div>
-            </a>
+            <div class="user" id="userProfile" tabindex="0">
+              <svg class="user-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 12a4 4 0 100-8 4 4 0 000 8z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M4 20a8 8 0 0116 0" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span id="userName">User</span>
+            </div>
             <a id="logoutBtn" class="btn-logout" href="/logout" title="Logout">
               Logout
             </a>
@@ -1490,6 +1488,7 @@ app.get('/content/:id', (req, res) => {
   });
 });
 
+
 // ----------------- AKUN - GANTI USERNAME / PASSWORD -----------------
 app.get('/account', isAuthenticated, (req, res) => {
   // ambil data user untuk menampilkan username sekarang (mengambil dari DB untuk sinkron)
@@ -1620,7 +1619,6 @@ app.post('/account/change-password', isAuthenticated, (req, res) => {
       res.send(renderLayout('Sukses', `<div class="page"><div class="success-box">Password berhasil diubah. Silakan login kembali jika perlu. <a class="link" href="/dashboard.html">Kembali ke Dashboard</a></div></div>`));
     });
   });
-});
 
 // ----------------- START SERVER -----------------
 app.get('/', (req, res) => {
@@ -1630,6 +1628,3 @@ app.get('/', (req, res) => {
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
 });
-
-
-
